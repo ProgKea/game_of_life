@@ -1,4 +1,7 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_mouse.h>
+#include <SDL2/SDL_render.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,26 +10,20 @@
 
 #define FOREGROUND_COLOR 255, 255, 255, 255
 #define BACKGROUND_COLOR 0, 0, 0, 255
+#define PAUSED_COLOR 50, 50, 50, 255
 
-#define CELL_ROWS 100
-#define CELL_COLS 100
-#define CELL_SIZE 10
+#define CELL_ROWS 20
+#define CELL_COLS 20
+#define CELL_SIZE 50
 #define CELL_COUNT CELL_ROWS *CELL_COLS
 
 #define DEFAULT_WINDOW_WIDTH CELL_ROWS *CELL_SIZE
 #define DEFAULT_WINDOW_HEIGHT CELL_COLS *CELL_SIZE
 
-void close_sdl(SDL_Window *win, SDL_Renderer *renderer)
-{
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(win);
-    SDL_Quit();
-}
-
-#define RETURN_ERROR                                    \
-    do {                                                \
-        fprintf(stderr, "ERROR: %s\n", SDL_GetError()); \
-        return EXIT_FAILURE;                            \
+#define RETURN_ERROR(msg)                                 \
+    do {                                                  \
+        fprintf(stderr, "%s\n%s\n", msg, SDL_GetError()); \
+        return EXIT_FAILURE;                              \
     } while (0)
 
 typedef struct {
@@ -46,8 +43,7 @@ uint32_t count_neighbors(Cell *grid, uint32_t row, uint32_t col)
 
     for (int32_t i = row - 1; i <= (int32_t)row + 1; i++) {
         for (int32_t j = col - 1; j <= (int32_t)col + 1; j++) {
-            if (i == (int32_t)row && j == (int32_t)col)
-                continue;
+            if (i == (int32_t)row && j == (int32_t)col) continue;
             if (i >= 0 && i < CELL_ROWS && j >= 0 && j < CELL_COLS && !grid[get_index(i, j)].dead)
                 n++;
         }
@@ -56,10 +52,10 @@ uint32_t count_neighbors(Cell *grid, uint32_t row, uint32_t col)
     return n;
 }
 
-void render_grid(Cell *grid, SDL_Renderer *renderer)
+void render_grid(Cell *grid, SDL_Renderer *renderer, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     for (uint32_t i = 0; i < CELL_COUNT; i++) {
-        SDL_SetRenderDrawColor(renderer, FOREGROUND_COLOR);
+        SDL_SetRenderDrawColor(renderer, r, g, b, a);
         if (grid[i].dead) {
             SDL_RenderDrawRect(renderer, &(SDL_Rect){.w = CELL_SIZE, .h = CELL_SIZE, .x = grid[i].row * CELL_SIZE, .y = grid[i].col * CELL_SIZE});
         } else {
@@ -105,37 +101,41 @@ static Cell grid[CELL_COUNT];
 int32_t main(void)
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        RETURN_ERROR;
+        RETURN_ERROR("SDL_Init failed.");
     }
 
-    SDL_Window *win = SDL_CreateWindow("Game of life", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
+    SDL_Window *win = SDL_CreateWindow("Game of life",
+                                       SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                       DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
+                                       SDL_WINDOW_SHOWN);
     if (!win) {
-        RETURN_ERROR;
+        RETURN_ERROR("Window creation failed.");
     }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
         SDL_DestroyRenderer(renderer);
         SDL_Quit();
-        RETURN_ERROR;
+        RETURN_ERROR("Renderer creation failed.");
     }
 
     create_grid(grid);
     bool quit = false;
     bool paused = true;
     SDL_Event e;
-    // create glider
-    grid[get_index(1 + 10, 0 + 10)].dead = false;
-    grid[get_index(2 + 10, 1 + 10)].dead = false;
-    grid[get_index(0 + 10, 2 + 10)].dead = false;
-    grid[get_index(1 + 10, 2 + 10)].dead = false;
-    grid[get_index(2 + 10, 2 + 10)].dead = false;
-
+    int32_t mousex, mousey;
     while (!quit) {
         SDL_PollEvent(&e);
         switch (e.type) {
         case SDL_QUIT:
             quit = true;
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            SDL_GetMouseState(&mousex, &mousey);
+            int32_t row = mousex / CELL_SIZE % CELL_ROWS;
+            int32_t col = mousey / CELL_SIZE % CELL_COLS;
+            int32_t idx = get_index(row, col);
+            if (idx >= 0) grid[idx].dead ^= true;
             break;
         case SDL_KEYDOWN:
             switch (e.key.keysym.sym) {
@@ -145,6 +145,9 @@ int32_t main(void)
             case SDLK_SPACE:
                 paused = !paused;
                 break;
+            case SDLK_r:
+                create_grid(grid);
+                break;
             }
             break;
         }
@@ -152,16 +155,23 @@ int32_t main(void)
         SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR);
         SDL_RenderClear(renderer);
 
-        render_grid(grid, renderer);
-
-        if (!paused)
+        if (!paused) {
             update_grid(grid);
+            render_grid(grid, renderer, FOREGROUND_COLOR);
+        } else {
+            render_grid(grid, renderer, PAUSED_COLOR);
+        }
 
         SDL_RenderPresent(renderer);
     }
 
-    close_sdl(win, renderer);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(win);
+    SDL_Quit();
     return EXIT_SUCCESS;
 }
 
 // TODO: make it wrap
+// TODO: read file to generate the grid or let the user click cells in order to toggle them
+// TODO: add zoom function
+// TODO: make it slower
