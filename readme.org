@@ -1,0 +1,8 @@
+#+TITLE: Game of life
+
+A simple game of life implementation in C using SDL2.
+
+#+BEGIN_SRC shell
+  $ make
+  $ ./gol
+#+END_SRC
