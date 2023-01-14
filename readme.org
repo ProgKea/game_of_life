@@ -7,4 +7,4 @@ A simple game of life implementation in C using SDL2.
   $ ./gol
 #+END_SRC
 
-[[file:demo.mp4]]
+[[./demo.mp4]]
