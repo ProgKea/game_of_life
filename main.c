@@ -6,6 +6,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include "common.h"
 
 #define make_rgba(r, g, b, a) \
     (rgba)                    \
@@ -24,7 +25,8 @@
 #define CELL_COLS 30
 #define CELL_SIZE 35
 #define CELL_COUNT (CELL_ROWS * CELL_COLS)
-#define CELL_UPDATE 20
+#define CELL_UPDATE 1
+// #define MAX_CELLS 900
 
 #define DEFAULT_WINDOW_WIDTH (CELL_ROWS * CELL_SIZE)
 #define DEFAULT_WINDOW_HEIGHT (CELL_COLS * CELL_SIZE)
@@ -32,10 +34,8 @@
 #define return_error(msg)                                 \
     do {                                                  \
         fprintf(stderr, "%s\n%s\n", msg, SDL_GetError()); \
-        return EXIT_FAILURE;                              \
+        return 1;                                         \
     } while (0)
-
-#define ignore(value) (void)(value + 1)
 
 typedef struct {
     uint8_t r;
@@ -54,8 +54,8 @@ typedef struct {
 
 void zoom(int zoom)
 {
-    ignore(zoom);
-    assert(0 && "unimplemented");
+    UNUSED(zoom);
+    UNIMPLEMENTED("Zoom function");
 }
 
 uint32_t get_index(uint32_t row, uint32_t col)
@@ -90,14 +90,6 @@ void set_grid_str(Cell *grid, char *s)
         grid[i + di].dead = s[i + di] == '0';
     }
 }
-
-typedef int Errno;
-
-#define return_defer(value) \
-    do {                    \
-        result = (value);   \
-        goto defer;         \
-    } while (0);
 
 Errno save_grid_to_file(Cell *grid, const char *file_path)
 {
@@ -140,7 +132,7 @@ char *slurp_file(const char *file_path)
         if (!buffer) goto error;
         if (fseek(file, 0, SEEK_SET) < 0) goto error;
 
-        ignore(fread(buffer, 1, (size_t)file_size, file));
+        UNUSED(fread(buffer, 1, (size_t)file_size, file));
         if (ferror(file)) goto error;
         buffer[file_size] = '\0';
     }
@@ -160,9 +152,11 @@ uint32_t count_neighbors(Cell *grid, uint32_t row, uint32_t col)
     for (int i = row - 1; i <= (int)row + 1; i++) {
         for (int j = col - 1; j <= (int)col + 1; j++) {
             if (i == (int)row && j == (int)col) continue;
-            if (i >= 0 && i < CELL_ROWS && j >= 0 && j < CELL_COLS &&
-                !grid[get_index(i, j)].dead)
-                n++;
+            int x = i % CELL_ROWS;
+            int y = j % CELL_COLS;
+            if (x < 0) x = CELL_ROWS - 1;
+            if (y < 0) y = CELL_COLS - 1;
+            if (!grid[get_index(x, y)].dead) n++;
         }
     }
 
@@ -231,7 +225,7 @@ void update_grid(Cell *grid)
 
 static Cell grid[CELL_COUNT];
 
-int main(void)
+int main()
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         return_error("SDL_Init failed.");
@@ -329,12 +323,10 @@ int main(void)
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(win);
     SDL_Quit();
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 // TODO: add zoom function
-// TODO: make it wrap
 // TODO: fix the rows and cols being mixed up in the code
 // TODO: find a way to make CELL_ROWS and CELL_COLS variable
 // TODO: Set a maximum amount of cells and let the user decide the cells
-// TODO: read the file path from command line arguments and load the cells of the provided file
