@@ -25,8 +25,7 @@
 #define CELL_COLS 30
 #define CELL_SIZE 35
 #define CELL_COUNT (CELL_ROWS * CELL_COLS)
-#define CELL_UPDATE 1
-// #define MAX_CELLS 900
+#define CELL_UPDATE 20
 
 #define DEFAULT_WINDOW_WIDTH (CELL_ROWS * CELL_SIZE)
 #define DEFAULT_WINDOW_HEIGHT (CELL_COLS * CELL_SIZE)
@@ -51,12 +50,6 @@ typedef struct {
     rgba fill_color;
     rgba border_color;
 } Cell;
-
-void zoom(int zoom)
-{
-    UNUSED(zoom);
-    UNIMPLEMENTED("Zoom function");
-}
 
 uint32_t get_index(uint32_t row, uint32_t col)
 {
@@ -292,7 +285,6 @@ int main()
 
         SDL_RenderClear(renderer);
 
-        // FIXME: This code is not really that clean
         for (uint32_t i = 0; i < CELL_COUNT; i++) {
             if (!grid[i].dead)
                 grid[i].fill_color = FOREGROUND_COLOR;
@@ -325,8 +317,3 @@ int main()
     SDL_Quit();
     return 0;
 }
-
-// TODO: add zoom function
-// TODO: fix the rows and cols being mixed up in the code
-// TODO: find a way to make CELL_ROWS and CELL_COLS variable
-// TODO: Set a maximum amount of cells and let the user decide the cells
