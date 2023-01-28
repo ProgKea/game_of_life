@@ -298,15 +298,11 @@ int main()
         }
         if (grid[mouse_cell_idx].dead) grid[mouse_cell_idx].fill_color = HOVER_COLOR;
 
-        if (!paused) {
-            if (update_frames >= CELL_UPDATE) {
-                update_grid(grid);
-                update_frames = 0;
-            }
-            render_grid(grid, renderer);
-        } else {
-            render_grid(grid, renderer);
+        if (!paused && update_frames >= CELL_UPDATE) {
+            update_grid(grid);
+            update_frames = 0;
         }
+        render_grid(grid, renderer);
 
         SDL_RenderPresent(renderer);
         update_frames++;
